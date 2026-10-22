@@ -1,0 +1,54 @@
+{
+ "trees": [
+  "trop_Banana01",
+  "trop_Banana02",
+  "trop_BeachPalm01",
+  "trop_CecropiaTree01",
+  "trop_CiabaTree_01",
+  "trop_CopalTree01",
+  "trop_Palm01",
+  "trop_Palm02",
+  "trop_Palm03",
+  "trop_QueensPalm01"
+ ],
+ "rocks": [
+  "trop_BeachRock_01",
+  "trop_GroupRocks01",
+  "trop_JungleOverhang",
+  "trop_SmallStone01",
+  "trop_SquareRock01",
+  "trop_Stone01"
+ ],
+ "vegetation": [
+  "trop_Bamboo01",
+  "trop_Bamboo_02",
+  "trop_BirdNestPlant01",
+  "trop_Bush01",
+  "trop_ElephantEar",
+  "trop_Phila01",
+  "trop_TropicFern01",
+  "trop_BeachGrass01"
+ ],
+ "props": [
+  "ruins_CathedralRuins_01",
+  "ruins_foundationRuin_01",
+  "ruins_PillarSegment_01",
+  "ruins_RomanRail_01",
+  "ruins_RomanTypeCol_01",
+  "ruins_RuinArch_01",
+  "ruins_RuinPillar_01",
+  "ruins_RuinWallSegment_01",
+  "ruins_RuinWallSegment_02",
+  "ruins_SpeakingStones_01",
+  "ruins_TempleRuin_01",
+  "ruins_TempleRuin_02",
+  "trop_Crate02",
+  "trop_Tropical_Jetty01",
+  "trop_Tropical_Jetty02",
+  "trop_JungleHut01",
+  "trop_JungleHut02",
+  "trop_CoconutBrown",
+  "trop_CoconutGreen",
+  "trop_Crate_01"
+ ]
+}

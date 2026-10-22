@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terrain Editor</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1b1e24; --panel2: #20242b; --border: #2b3038;
+    --text: #d8dce3; --muted: #8b93a1; --accent: #3b82f6; --accent2: #2dd4a7;
+    --danger: #e5484d; --radius: 6px;
+    --font: system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font-family: var(--font); font-size: 13px; }
+  #viewport { position: fixed; inset: 0; display: block; }
+
+  /* ---------- top bar ---------- */
+  #topbar { position: fixed; top: 0; left: 0; right: 0; height: 44px; z-index: 30;
+    display: flex; align-items: center; gap: 14px; padding: 0 14px;
+    background: rgba(20,22,26,.92); border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(6px); }
+  #topbar .brand { font-weight: 650; letter-spacing: .3px; }
+  #topbar .brand span { color: var(--accent); }
+  .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; }
+  .seg button { background: transparent; border: 0; color: var(--muted);
+    padding: 5px 14px; font: inherit; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  #topbar .hint { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+  /* ---------- side panels ---------- */
+  .panel { position: fixed; z-index: 20; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+  #left { top: 56px; left: 12px; width: 216px; padding: 12px;
+    display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 74px);
+    overflow-y: auto; }
+  #right { top: 56px; right: 12px; width: 252px; padding: 12px;
+    display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 74px);
+    overflow-y: auto; }
+  #bottom { left: 240px; right: 276px; bottom: 12px; padding: 10px 12px;
+    display: flex; gap: 16px; align-items: stretch; }
+
+  .sect { background: var(--panel2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px; }
+  .sect > h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--muted); margin-bottom: 9px; font-weight: 600; }
+
+  /* tool buttons */
+  .tools { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .tools button { background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius); padding: 8px 2px 6px;
+    font: inherit; font-size: 11px; cursor: pointer; display: flex;
+    flex-direction: column; align-items: center; gap: 4px; min-height: 52px;
+    justify-content: center; transition: border-color .12s, background .12s; }
+  .tools button:hover { border-color: #3a414c; }
+  .tools button.on { background: color-mix(in srgb, var(--accent) 22%, var(--panel));
+    border-color: var(--accent); }
+  .tools svg { width: 16px; height: 16px; stroke: currentColor; fill: none;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+
+  /* sliders */
+  .row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+  .row label { width: 64px; color: var(--muted); font-size: 12px; flex: none; }
+  .row input[type=range] { flex: 1; accent-color: var(--accent); height: 3px; }
+  .row .val { width: 42px; text-align: right; font-variant-numeric: tabular-nums;
+    font-size: 12px; color: var(--text); }
+  .row select, .row input[type=number] { background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px;
+    font: inherit; width: 100%; }
+  .row2 { display: flex; gap: 8px; }
+  .check { display: flex; align-items: center; gap: 7px; margin: 6px 0;
+    color: var(--muted); font-size: 12px; cursor: pointer; }
+  .check input { accent-color: var(--accent); }
+
+  button.act { width: 100%; background: var(--accent); border: 0; color: #fff;
+    font: inherit; font-weight: 600; padding: 7px; border-radius: var(--radius);
+    cursor: pointer; margin-top: 6px; }
+  button.act.ghost { background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); font-weight: 500; }
+  button.act:hover { filter: brightness(1.08); }
+
+  /* layers */
+  .layer { display: flex; align-items: center; gap: 8px; padding: 5px 6px;
+    border-radius: 4px; cursor: pointer; }
+  .layer:hover { background: #262b33; }
+  .layer .sw { width: 14px; height: 14px; border-radius: 3px; flex: none;
+    border: 1px solid rgba(255,255,255,.18); }
+  .layer .nm { flex: 1; font-size: 12px; }
+  .layer .eye { color: var(--muted); font-size: 13px; width: 18px; text-align: center; }
+  .layer.off .nm, .layer.off .eye { opacity: .38; }
+
+  /* asset browser */
+  #assets { flex: 1; min-width: 0; }
+  #assetTabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  #assetTabs button { background: transparent; border: 1px solid transparent;
+    color: var(--muted); font: inherit; font-size: 12px; padding: 4px 12px;
+    border-radius: 999px; cursor: pointer; }
+  #assetTabs button.on { background: var(--panel2); border-color: var(--border);
+    color: var(--text); }
+  #assetTiles { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .tile { flex: none; width: 86px; background: var(--panel2);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 4px; text-align: center; cursor: pointer; font-size: 11px;
+    color: var(--muted); }
+  .tile canvas { width: 100%; height: 46px; display: block; margin-bottom: 4px; }
+  .tile.on { border-color: var(--accent); color: var(--text);
+    background: color-mix(in srgb, var(--accent) 14%, var(--panel2)); }
+  #scatterRow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+  #scatterRow input[type=range] { flex: 1; accent-color: var(--accent2); }
+  #scatterRow button { background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px;
+    font: inherit; font-size: 12px; cursor: pointer; }
+
+  /* minimap */
+  #minimapWrap { flex: none; width: 172px; display: flex; flex-direction: column; }
+
+  /* per-variant scatter rows */
+  #variantRows { max-height: 216px; overflow-y: auto; display: flex;
+    flex-direction: column; gap: 4px; }
+  .vrow { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 6px; font-size: 11px; }
+  .vrow .vhead { display: flex; align-items: center; gap: 6px; }
+  .vrow .vname { flex: 1; cursor: pointer; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vrow .vname:hover { color: var(--accent); }
+  .vrow .vcount { color: var(--muted); font-variant-numeric: tabular-nums;
+    min-width: 30px; text-align: right; }
+  .vrow .vbtn { background: none; border: 1px solid var(--border);
+    color: var(--muted); border-radius: 3px; width: 20px; height: 18px;
+    cursor: pointer; font-size: 11px; line-height: 1; padding: 0; }
+  .vrow .vbtn:hover { color: var(--text); border-color: #3a414c; }
+  .vrow input[type=range] { width: 100%; accent-color: var(--accent);
+    height: 3px; margin-top: 4px; }
+  #minimapWrap h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  #minimap { width: 168px; height: 132px; border: 1px solid var(--border);
+    border-radius: 4px; background: #0d0f12; }
+
+  /* region panel hidden unless active */
+  #regionSect { display: none; }
+  #regionSect.show { display: block; }
+
+  /* status */
+  #status { position: fixed; left: 50%; bottom: 176px; transform: translateX(-50%);
+    z-index: 25; background: rgba(15,17,20,.85); border: 1px solid var(--border);
+    padding: 5px 14px; border-radius: 999px; font-size: 12px; color: var(--muted);
+    pointer-events: none; white-space: nowrap; }
+  #status b { color: var(--text); font-weight: 600; }
+
+  /* play mode: hide editor chrome */
+  body.play #left, body.play #right, body.play #bottom, body.play #status { display: none; }
+  body.play #topbar .hint { display: none; }
+
+  /* brush cursor */
+  #brushRing { position: fixed; z-index: 15; pointer-events: none; display: none;
+    border: 1.5px solid rgba(255,255,255,.85); border-radius: 50%;
+    transform: translate(-50%,-50%); box-shadow: 0 0 0 1px rgba(0,0,0,.5),
+      inset 0 0 0 1px rgba(0,0,0,.5); }
+  #brushRing.neg { border-color: var(--danger); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #333941; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<canvas id="viewport"></canvas>
+
+<header id="topbar">
+  <div class="brand">TERRAIN<span>&nbsp;EDITOR</span></div>
+  <div class="seg" id="modeSeg">
+    <button id="btnEdit" class="on">Editor</button>
+    <button id="btnPlay">Play</button>
+  </div>
+  <div class="hint" id="topHint">LMB tool · RMB/MMB orbit · Ctrl+Z undo</div>
+</header>
+
+<!-- ============ LEFT: tools + brush ============ -->
+<aside id="left" class="panel">
+  <section class="sect">
+    <h3>Terrain Tools</h3>
+    <div class="tools" id="toolGrid">
+      <button data-tool="sculpt" class="on" title="Drag on terrain to raise, Alt to lower"><svg viewBox="0 0 16 16"><path d="M2 12 L6 6 L9 9 L14 3"/><path d="M11 3h3v3"/></svg>Sculpt</button>
+      <button data-tool="pull" title="Wide pillow pull upward"><svg viewBox="0 0 16 16"><path d="M8 14V3"/><path d="M5 6 8 3 11 6"/></svg>Pull</button>
+      <button data-tool="flatten" title="Blend toward brush height"><svg viewBox="0 0 16 16"><path d="M2 10h12"/><path d="M4 13h8"/></svg>Flatten</button>
+      <button data-tool="scale" title="Amplify or shrink local relief"><svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="M6 6h4v4H6z"/></svg>Scale</button>
+      <button data-tool="mountain" title="Raise ridged peaks"><svg viewBox="0 0 16 16"><path d="M1.5 13 6 4l3 5 2-3 3.5 7z"/></svg>Mountain</button>
+      <button data-tool="lake" title="Carve below water level"><svg viewBox="0 0 16 16"><path d="M2 9c2-2 4 2 6 0s4 2 6 0"/><path d="M2 13c2-2 4 2 6 0s4 2 6 0"/></svg>Lake</button>
+      <button data-tool="smooth" title="Relax noisy areas"><svg viewBox="0 0 16 16"><path d="M2 11c3 0 3-6 6-6s3 6 6 6"/></svg>Smooth</button>
+      <button data-tool="region" title="Select a rectangle, then scale / move / raise it"><svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" stroke-dasharray="2.5 2"/><path d="M8 6v6M6 8h4"/></svg>Region</button>
+      <button data-tool="edit" title="Select &amp; move individual vertices or faces (Blender-style)"><svg viewBox="0 0 16 16"><circle cx="4" cy="4.5" r="1.7"/><circle cx="11.5" cy="6.5" r="1.7"/><circle cx="6" cy="12" r="1.7"/><path d="M4 4.5 11.5 6.5 6 12Z"/></svg>Edit</button>
+      <button data-tool="place" title="Place selected asset on click"><svg viewBox="0 0 16 16"><path d="M8 2v7M5 6l3 3 3-3"/><path d="M3 13h10"/></svg>Place</button>
+    </div>
+  </section>
+
+  <section class="sect">
+    <h3>Brush Settings</h3>
+    <div class="row"><label>Size</label>
+      <input type="range" id="bSize" min="4" max="120" step="1" value="30">
+      <span class="val" id="bSizeV">30</span></div>
+    <div class="row"><label>Height</label>
+      <input type="range" id="bHeight" min="0.5" max="12" step="0.5" value="3">
+      <span class="val" id="bHeightV">3.0</span></div>
+    <div class="row"><label>Strength</label>
+      <input type="range" id="bStr" min="0.05" max="1" step="0.05" value="0.5">
+      <span class="val" id="bStrV">0.50</span></div>
+    <div class="row"><label>Falloff</label>
+      <input type="range" id="bFall" min="0" max="1" step="0.05" value="0.5">
+      <span class="val" id="bFallV">0.50</span></div>
+    <div class="row2">
+      <button class="act ghost" id="shapeRound" style="background:#2b3341;border-color:var(--accent)">Round</button>
+      <button class="act ghost" id="shapeBox">Box</button>
+    </div>
+    <div class="row2" title="Edit tool: what a click selects">
+      <button class="act ghost" id="emVertex" style="background:#2b3341;border-color:var(--accent)">Vertex</button>
+      <button class="act ghost" id="emFace">Face</button>
+    </div>
+  </section>
+</aside>
+
+<!-- ============ RIGHT: properties / procedural / layers / region ============ -->
+<aside id="right" class="panel">
+  <section class="sect">
+    <h3>Terrain Properties</h3>
+    <div class="row"><label>Map Style</label>
+      <select id="mapStyle">
+        <option value="stylized" selected>Stylized</option>
+        <option value="ps2">PS2 / Crash (sunset)</option>
+        <option value="autumn">Autumn</option>
+        <option value="desert">Desert</option>
+        <option value="winter">Winter</option>
+        <option value="volcanic">Volcanic</option>
+      </select></div>
+    <div class="row"><label>Brush Mode</label>
+      <select id="bMode">
+        <option value="toggle" selected>Raise / Lower (Alt)</option>
+        <option value="raise">Raise only</option>
+        <option value="lower">Lower only</option>
+      </select></div>
+    <div class="row"><label>Water Level</label>
+      <input type="range" id="wLevel" min="-8" max="6" step="0.1" value="0">
+      <span class="val" id="wLevelV">0.0</span></div>
+    <div class="row"><label>Textures</label>
+      <input type="range" id="tBlend" min="0" max="1" step="0.05" value="0.9">
+      <span class="val" id="tBlendV">0.90</span></div>
+    <div class="row"><label>Tile Size</label>
+      <input type="range" id="tTile" min="3" max="40" step="1" value="8">
+      <span class="val" id="tTileV">8m</span></div>
+    <div class="row"><label>Water Style</label>
+      <select id="wStyle">
+        <option value="tropical" selected>Tropical (turquoise)</option>
+        <option value="alpine">Alpine (glacial teal)</option>
+        <option value="ocean">Deep Ocean (navy)</option>
+      </select></div>
+    <label class="check"><input type="checkbox" id="chkFlat" > Low-poly flat shading</label>
+    <label class="check"><input type="checkbox" id="chkGrid" > Show ground grid</label>
+  </section>
+
+  <section class="sect">
+    <h3>Procedural Generation</h3>
+    <div class="row"><label>Seed</label>
+      <input type="number" id="pSeed" value="12345">
+      <button class="act ghost" id="btnDice" style="width:34px;margin:0;padding:5px 0" title="Random seed">⟳</button></div>
+    <div class="row"><label>Terrain Size</label>
+      <select id="pSize">
+        <option value="256">256 m</option>
+        <option value="512" selected>512 m</option>
+        <option value="1024">1024 m</option>
+      </select></div>
+    <div class="row"><label>Base Height</label>
+      <input type="range" id="pBase" min="-6" max="10" step="0.5" value="0">
+      <span class="val" id="pBaseV">0.0</span></div>
+    <div class="row"><label>Roughness</label>
+      <input type="range" id="pRough" min="0.2" max="1.4" step="0.05" value="0.8">
+      <span class="val" id="pRoughV">0.80</span></div>
+    <button class="act" id="btnRegen">⟳ Regenerate</button>
+  </section>
+
+  <section class="sect">
+    <h3>Layers</h3>
+    <div id="layerList"></div>
+  </section>
+
+  <section class="sect" id="regionSect">
+    <h3>Region</h3>
+    <div class="row"><label>Raise</label>
+      <input type="range" id="rRaise" min="-20" max="40" step="0.5" value="0">
+      <span class="val" id="rRaiseV">0.0</span></div>
+    <div class="row"><label>Move X</label>
+      <input type="range" id="rMx" min="-80" max="80" step="1" value="0">
+      <span class="val" id="rMxV">0</span></div>
+    <div class="row"><label>Move Z</label>
+      <input type="range" id="rMz" min="-80" max="80" step="1" value="0">
+      <span class="val" id="rMzV">0</span></div>
+    <div class="row"><label>Scale X</label>
+      <input type="range" id="rSx" min="0.3" max="3" step="0.05" value="1">
+      <span class="val" id="rSxV">1.00</span></div>
+    <div class="row"><label>Scale Z</label>
+      <input type="range" id="rSz" min="0.3" max="3" step="0.05" value="1">
+      <span class="val" id="rSzV">1.00</span></div>
+    <button class="act ghost" id="btnRegionClear">Deselect region</button>
+  </section>
+
+  <section class="sect">
+    <h3>Scatter</h3>
+    <div class="row"><label>Density</label>
+      <input type="range" id="sDensity" min="0" max="1" step="0.05" value="0.5">
+      <span class="val" id="sDensityV">0.50</span></div>
+    <div class="row"><label>Seed</label>
+      <input type="number" id="pPlaceSeed" value="4242">
+      <button class="act ghost" id="btnDice2" style="width:34px;margin:0;padding:5px 0" title="Random placement seed">&#10227;</button></div>
+    <button class="act" id="btnScatter">Scatter vegetation</button>
+    <button class="act ghost" id="btnReshuffle">&#8635; Randomize placement</button>
+    <button class="act ghost" id="btnClear">Clear placed assets</button>
+    <div id="variantRows" style="margin-top:8px"></div>
+  </section>
+</aside>
+
+<!-- ============ BOTTOM: asset browser + minimap ============ -->
+<footer id="bottom" class="panel">
+  <div id="assets">
+    <div id="assetTabs">
+      <button data-cat="trees" class="on">Trees</button>
+      <button data-cat="rocks">Rocks</button>
+      <button data-cat="vegetation">Vegetation</button>
+      <button data-cat="props">Props</button>
+      <button data-cat="hq">HQ (slow)</button>
+    </div>
+    <div id="assetTiles"></div>
+    <div id="scatterRow">
+      <span style="color:var(--muted);font-size:12px">Click an asset, then click the terrain to place · Esc returns to tool</span>
+    </div>
+  </div>
+  <div id="minimapWrap">
+    <h3>Mini Map</h3>
+    <canvas id="minimap" width="336" height="264"></canvas>
+  </div>
+</footer>
+
+<div id="brushRing"></div>
+<div id="status">Tool: <b id="stTool">Sculpt</b> · <span id="stMsg">drag on terrain</span></div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
